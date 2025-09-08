@@ -1,0 +1,9 @@
+# Ignore generated/cached files
+.config/nvim/plugin/packer_compiled.lua
+.config/nvim/.netrwhist
+.config/nvim/swap/
+.config/nvim/undo/
+.config/nvim/backup/
+.local/share/
+.cache/
+
