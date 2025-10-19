@@ -4,6 +4,20 @@
 
 set -euo pipefail
 
+# --- 0. Ensure yay is installed ---
+ensure_yay() {
+    if ! command -v yay &>/dev/null; then
+        echo "📦 Installing yay (AUR helper)..."
+        tmpdir=$(mktemp -d)
+        git clone https://aur.archlinux.org/yay.git "$tmpdir"
+        pushd "$tmpdir" >/dev/null
+        makepkg -si --noconfirm
+        popd >/dev/null
+        rm -rf "$tmpdir"
+    fi
+}
+
+# --- 1. Install repo / AUR packages ---
 install_repo_pkg() {
     local pkg="$1"
     if ! pacman -Qi "$pkg" &>/dev/null; then
@@ -20,18 +34,7 @@ install_aur_pkg() {
     fi
 }
 
-ensure_yay() {
-    if ! command -v yay &>/dev/null; then
-        echo "Installing yay (AUR helper)..."
-        tmpdir=$(mktemp -d)
-        git clone https://aur.archlinux.org/yay.git "$tmpdir"
-        pushd "$tmpdir" >/dev/null
-        makepkg -si --noconfirm
-        popd >/dev/null
-        rm -rf "$tmpdir"
-    fi
-}
-
+# --- 2. Parse PKGBUILD dependencies ---
 parse_pkgbuild_deps() {
     local pkgbuild="$1"
     declare -A deps
@@ -61,15 +64,15 @@ parse_pkgbuild_deps() {
     done
 }
 
+# --- 3. Bootstrap environment ---
 bootstrap() {
     echo "🔹 Running PKGBUILD-aware bootstrap..."
-
     ensure_yay
 
     local folder="${1:-$HOME/Projects/dotfiles/pkgbuilds}"
     if [[ ! -d "$folder" ]]; then
-        echo "❌ Folder '$folder' does not exist."
-        return 1
+        echo "ℹ️  Folder '$folder' does not exist — skipping PKGBUILD installs."
+        return 0
     fi
 
     for pkgbuild in "$folder"/PKGBUILD "$folder"/*/PKGBUILD; do
@@ -81,87 +84,55 @@ bootstrap() {
     echo "✅ PKGBUILD bootstrap complete!"
 }
 
-# ----------------------------------------
-# 5️⃣ Export system packages as PKGBUILD
-# ----------------------------------------
+# --- 4. Export versioned PKGBUILD snapshot ---
+timestamp() { date +"%Y-%m-%d_%H-%M-%S"; }
 
-export_pkgbuilds() {
-    local export_dir="${1:-$HOME/Projects/dotfiles/pkgbuilds/generated}"
-    mkdir -p "$export_dir"
-    local outfile="$export_dir/PKGBUILD"
+export_pkgbuilds_versioned() {
+    local base_dir="${1:-$HOME/Projects/dotfiles/pkgbuilds/generated}"
+    mkdir -p "$base_dir"
+    local snap_file="$base_dir/PKGBUILD-$(timestamp)"
+    local latest_file="$base_dir/PKGBUILD"
 
-    echo "🔹 Scanning installed packages..."
-    local repo_pkgs aur_pkgs
-    repo_pkgs=$(pacman -Qqe | sort)
-    aur_pkgs=$(yay -Qm | awk '{print $1}' | sort)
+    echo "📦 Exporting installed packages to $snap_file..."
+    pacman -Qqe | sort > "$base_dir/repo_pkgs.txt"
+    yay -Qm | awk '{print $1}' | sort > "$base_dir/aur_pkgs.txt"
 
-    echo "🔹 Generating $outfile"
-
-    cat > "$outfile" <<EOF
-# Auto-generated PKGBUILD (snapshot of installed environment)
+    cat > "$snap_file" <<EOF
+# Auto-generated PKGBUILD (snapshot)
 pkgname=dotfiles-meta
 pkgver=1.0
 pkgrel=1
 arch=('any')
 license=('custom')
 depends=(
-$(echo "$repo_pkgs" | sed 's/^/  /')
+$(cat "$base_dir/repo_pkgs.txt" | sed 's/^/  /')
 )
 makedepends=(
-$(echo "$aur_pkgs" | sed 's/^/  /')
+$(cat "$base_dir/aur_pkgs.txt" | sed 's/^/  /')
 )
 EOF
 
-    echo "✅ Export complete! Generated $outfile"
-}
-
-# ----------------------------------------
-# 6️⃣ Versioned PKGBUILD Snapshots + Git Sync
-# ----------------------------------------
-
-timestamp() {
-    date +"%Y-%m-%d_%H-%M-%S"
-}
-
-export_pkgbuilds_versioned() {
-    local base_dir="${1:-$HOME/Projects/dotfiles/pkgbuilds/generated}"
-    mkdir -p "$base_dir"
-
-    local snap_file="$base_dir/PKGBUILD-$(timestamp)"
-    local latest_file="$base_dir/PKGBUILD"
-
-    echo "📦 Generating new versioned PKGBUILD snapshot..."
-    export_pkgbuilds "$base_dir"
-
-    mv "$latest_file" "$snap_file"
     ln -sf "$(basename "$snap_file")" "$latest_file"
-
-    echo "✅ Created $snap_file and updated symlink → PKGBUILD"
+    echo "✅ Versioned PKGBUILD snapshot created."
 }
 
+# --- 5. Git helpers ---
 dotfiles_push() {
     local repo_dir="${1:-$HOME/Projects/dotfiles}"
     pushd "$repo_dir" >/dev/null || return
-
-    echo "📤 Committing dotfile and package updates..."
+    echo "📤 Committing and pushing dotfiles..."
     export_pkgbuilds_versioned
-
     git add -A
     git commit -m "dotfiles update: $(timestamp)" || echo "🟡 Nothing new to commit."
-    git push || echo "⚠️ Git push failed (check remote or credentials)."
-
+    git push || echo "⚠ Git push failed."
     popd >/dev/null
-    echo "✅ Dotfiles pushed successfully."
 }
 
 dotfiles_pull() {
     local repo_dir="${1:-$HOME/Projects/dotfiles}"
     pushd "$repo_dir" >/dev/null || return
-
     echo "📥 Pulling latest dotfile updates..."
     git pull --rebase
-    echo "✅ Updated local repo."
-
     popd >/dev/null
 }
 

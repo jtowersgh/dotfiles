@@ -7,16 +7,27 @@ set -euo pipefail
 DOTFILES="$HOME/Projects/dotfiles"
 
 echo "🔹 Installing dotfiles..."
-for f in .bashrc .bash_profile; do
-    ln -sf "$DOTFILES/$f" "$HOME/$f"
-done
 
+# ----------------------------
+# 1️⃣ Restore dotfiles symlinks
+# ----------------------------
+echo "🔹 Restoring dotfiles symlinks..."
+bash "$DOTFILES/restore_dotfiles.sh"
+
+# ----------------------------
+# 2️⃣ Ensure basic directories exist
+# ----------------------------
 mkdir -p "$HOME/.config"
 mkdir -p "$DOTFILES/bash"
 mkdir -p "$DOTFILES/pkgbuilds"
 
-# Source the new bashrc
-source "$HOME/.bashrc"
+# ----------------------------
+# 3️⃣ Source the new bashrc
+# ----------------------------
+if [ -f "$HOME/.bashrc" ]; then
+    echo "🔹 Sourcing $HOME/.bashrc..."
+    source "$HOME/.bashrc"
+fi
 
 echo "🔹 Dotfiles linked. You can now run:"
 echo "    bootstrap"
