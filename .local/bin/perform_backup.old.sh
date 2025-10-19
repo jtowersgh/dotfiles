@@ -15,30 +15,10 @@ perform_backup() {
     local failed_files="$dest/failed_permissions.txt"
     > "$failed_files"
 
-    # Main archive
-    if ! tar --ignore-failed-read -czf "$dest/backup.tar.gz" -T "$BACKUP_LIST" 2>>"$failed_files"; then
-	echo "Error: tar failed during backup. See $failed_files for details."
-	exit 1
-    fi
-    echo "Main archive created at $dest/backup.tar.gz"
+    tar --ignore-failed-read -czf "$dest/backup.tar.gz" -T "$BACKUP_LIST" 2>>"$failed_files"
 
-    # Save system info for reinstall cheat sheet
-    echo "Saving system info..."
+    # Save a copy of the current fstab alongside the backup
     cp /etc/fstab "$dest/fstab.old"
-    lsblk -o NAME,SIZE,FSTYPE,UUID,LABEL,MOUNTPOINT > "$dest/lsblk.txt"
-    swapon --show > "$dest/swap_info.txt"
-    df -h > "$dest/df.txt"
-
-    echo
-    echo "⚠️  NOTE: /etc has been included in this backup."
-    echo "    It should be used as a reference during restore, not blindly copied over."
-
-    # Save system info for restoration
-    echo "Saving system info..."
-    cp /etc/fstab "$dest/fstab.old"
-    lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT > "$dest/lsblk.txt"
-    sudo fdisk -l > "$dest/fdisk.txt"
-    sudo blkid > "$dest/blkid.txt"
 
     if [[ -s "$failed_files" ]]; then
         echo "Some files could not be backed up due to permissions:"
@@ -47,8 +27,8 @@ perform_backup() {
 
     echo "Backup complete."
     echo "Archive location: $dest/backup.tar.gz"
+    echo "fstab copy: $dest/fstab.old"
     [[ -s "$failed_files" ]] && echo "List of skipped files: $failed_files"
-    echo "System info saved: fstab.old, lsblk.txt, fdisk.txt, blkid.txt"
 }
 
 # -------- MAIN --------

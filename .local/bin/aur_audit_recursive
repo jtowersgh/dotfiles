@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# aur_audit_recursive: Audit dependencies of a PKGBUILD recursively (AUR vs official repos) using .SRCINFO
+set -euo pipefail
+# set -x  # uncomment for debugging
+
+PKG_PATH="${1:-.}"
+AUR_DIR="$HOME/aur_review/aur"
+OFFICIAL_DIR="$HOME/aur_review/official"
+mkdir -p "$AUR_DIR" "$OFFICIAL_DIR"
+
+echo "🧹 Cleaning old review data..."
+rm -rf "$AUR_DIR"/* "$OFFICIAL_DIR"/*
+
+# ---- Track visited packages to prevent infinite loops ----
+declare -A VISITED_PKGS
+
+# ---- Helpers ----
+check_official() {
+    local pkg="$1"
+    if pacman -Si "$pkg" &>/dev/null; then
+        echo "✔ $pkg — official repo"
+        return 0
+    else
+        return 1
+    fi
+}
+
+check_aur_clone() {
+    local pkg="$1"
+    if [[ -d "$AUR_DIR/$pkg" ]]; then
+        echo "⚠️  $pkg — already cloned"
+        return 0
+    fi
+    if git clone "https://aur.archlinux.org/$pkg.git" "$AUR_DIR/$pkg" &>/dev/null; then
+        echo "⚠️  $pkg — cloned from AUR"
+        return 0
+    else
+        echo "❌ Failed to find $pkg in AUR"
+        return 1
+    fi
+}
+
+# ---- Parse .SRCINFO for a PKGBUILD directory ----
+get_pkgbuild_arrays() {
+    local pkgdir="$1"
+    local srcinfo="$pkgdir/.SRCINFO"
+
+    # Ensure .SRCINFO exists
+    if [[ ! -f "$srcinfo" ]]; then
+        # Generate it with makepkg --printsrcinfo
+        (cd "$pkgdir" && makepkg --printsrcinfo > .SRCINFO)
+    fi
+
+    # Read package names from .SRCINFO
+    depends=()
+    makedepends=()
+    checkdepends=()
+    optdepends=()
+
+    while IFS= read -r line; do
+        case "$line" in
+            "depends = "*)
+                depends+=("${line#depends = }")
+                ;;
+            "makedepends = "*)
+                makedepends+=("${line#makedepends = }")
+                ;;
+            "checkdepends = "*)
+                checkdepends+=("${line#checkdepends = }")
+                ;;
+            "optdepends = "*)
+                # Only take the package name before colon
+                dep="${line#optdepends = }"
+                dep="${dep%%:*}"
+                optdepends+=("$dep")
+                ;;
+        esac
+    done < "$srcinfo"
+}
+
+# ---- Recursive auditing of packages ----
+audit_packages() {
+    local -n pkg_array="$1"
+
+    for pkg in "${pkg_array[@]}"; do
+        # Skip empty or already visited
+        [[ -z "$pkg" ]] && continue
+        if [[ -n "${VISITED_PKGS[$pkg]:-}" ]]; then
+            continue
+        fi
+        VISITED_PKGS[$pkg]=1
+
+        if check_official "$pkg"; then
+            continue
+        fi
+
+        if check_aur_clone "$pkg"; then
+            # Recursively audit AUR dependency if PKGBUILD exists
+            if [[ -f "$AUR_DIR/$pkg/PKGBUILD" ]]; then
+                get_pkgbuild_arrays "$AUR_DIR/$pkg"
+                audit_packages depends
+                audit_packages makedepends
+                audit_packages checkdepends
+                audit_packages optdepends
+            fi
+        fi
+    done
+}
+
+# ---- Start auditing ----
+if [[ ! -f "$PKG_PATH/PKGBUILD" ]]; then
+    echo "❌ PKGBUILD not found in $PKG_PATH"
+    exit 1
+fi
+
+get_pkgbuild_arrays "$PKG_PATH"
+
+echo "=== Auditing AUR and official repo dependencies ==="
+audit_packages depends
+audit_packages makedepends
+audit_packages checkdepends
+audit_packages optdepends
+
+# ---- Summary ----
+echo
+echo "=== Summary ==="
+echo "Official repo packages: $(pacman -Qq | wc -l)"
+echo "AUR packages cloned: $(ls -1 "$AUR_DIR" | wc -l)"
+ls -1 "$AUR_DIR" > "$AUR_DIR/../aur_list.txt" 2>/dev/null || true
+echo "AUR package list saved to: $AUR_DIR/../aur_list.txt"
+
