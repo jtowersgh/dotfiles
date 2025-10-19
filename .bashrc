@@ -1,26 +1,19 @@
-#
 # ~/.bashrc
-#
 
-# If not running interactively, don't do anything
+# Only run for interactive shells
 [[ $- != *i* ]] && return
 
-alias ls='ls --color=auto'
-alias grep='grep --color=auto'
+# Source modular config files
+for file in ~/Projects/dotfiles/bash/{aliases.sh,exports.sh,prompt.sh,functions.sh}; do
+    [[ -f $file ]] && . "$file"
+done
 
-#my custom aliases
-#alias godot="godot --rendering-driver opengl3"
-alias bashrc="vim ~/.bashrc"
-
-PS1='[\u@\h \W]\$ '
-
+# Optional: fzf setup
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
-#my custom aliases
-alias playlist="vim ~/Documents/playlist"
-alias bottles="flatpak run com.usebottles.bottles"
-alias bashrc="vim ~/.bashrc"
-alias vim="nvim"
-alias l="ls -a"
-alias ll="ls -l"
-alias la="ls -la"
+# Source bootstrap functions (manual execution)
+[ -f ~/Projects/dotfiles/bash/bootstrap.sh ] && source ~/Projects/dotfiles/bash/bootstrap.sh
+
+# Define manual bootstrap alias
+alias bootstrap='bootstrap'
+

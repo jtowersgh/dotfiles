@@ -45,6 +45,9 @@ INCLUDE=(
 
   # Password store
   "$HOME/.password-store"
+
+  # etc directory
+  "/etc"
 )
 
 # -------- FUNCTIONS --------
