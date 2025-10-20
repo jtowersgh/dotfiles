@@ -1,12 +1,54 @@
+-- init.lua (merged first-run-safe version)
+
+-- ---------------------------------------------------
+-- 0. Bootstrap packer.nvim if not installed
+-- ---------------------------------------------------
+local fn = vim.fn
+local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
+
+if fn.empty(fn.glob(install_path)) > 0 then
+  print("📦 Installing packer.nvim...")
+  fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
+  vim.cmd [[packadd packer.nvim]]
+end
+
+-- Auto-compile when saving this file
+vim.cmd([[
+  augroup packer_user_config
+    autocmd!
+    autocmd BufWritePost init.lua source <afile> | PackerCompile
+  augroup end
+]])
+
+-- ---------------------------------------------------
+-- 1. Plugins
+-- ---------------------------------------------------
+require('packer').startup(function(use)
+  use 'wbthomason/packer.nvim'          -- Packer manages itself
+  use 'neovim/nvim-lspconfig'           -- LSP configurations
+  use 'hrsh7th/nvim-cmp'                -- Autocompletion
+  use 'hrsh7th/cmp-nvim-lsp'
+  use 'nvim-treesitter/nvim-treesitter' -- Treesitter syntax highlighting
+  use 'nvim-lua/plenary.nvim'
+  use 'nvim-telescope/telescope.nvim'
+  use 'ThePrimeagen/harpoon'
+  use 'rose-pine/neovim'                -- Colorscheme
+end)
+
+-- ---------------------------------------------------
+-- 2. Load your existing bartleby module
+-- ---------------------------------------------------
 require("bartleby")
-print("hello")
+print("hello")  -- your debug / test line
 
--- Reserve a space in the gutter
--- This will avoid an annoying layout shift in the screen
-vim.opt.signcolumn = 'yes'
+-- ---------------------------------------------------
+-- 3. Neovim settings
+-- ---------------------------------------------------
+vim.opt.signcolumn = 'yes'  -- avoid layout shift
 
--- Add cmp_nvim_lsp capabilities settings to lspconfig
--- This should be executed before you configure any language server
+-- ---------------------------------------------------
+-- 4. LSP capabilities
+-- ---------------------------------------------------
 local lspconfig_defaults = require('lspconfig').util.default_config
 lspconfig_defaults.capabilities = vim.tbl_deep_extend(
   'force',
@@ -14,8 +56,9 @@ lspconfig_defaults.capabilities = vim.tbl_deep_extend(
   require('cmp_nvim_lsp').default_capabilities()
 )
 
--- This is where you enable features that only work
--- if there is a language server active in the file
+-- ---------------------------------------------------
+-- 5. LSP keymaps
+-- ---------------------------------------------------
 vim.api.nvim_create_autocmd('LspAttach', {
   desc = 'LSP actions',
   callback = function(event)
@@ -33,3 +76,16 @@ vim.api.nvim_create_autocmd('LspAttach', {
     vim.keymap.set('n', '<F4>', '<cmd>lua vim.lsp.buf.code_action()<cr>', opts)
   end,
 })
+
+-- ---------------------------------------------------
+-- 6. Colorscheme
+-- ---------------------------------------------------
+vim.cmd [[colorscheme rose-pine]]
+
+-- ---------------------------------------------------
+-- 7. Safe first-run notes
+-- ---------------------------------------------------
+-- After first run:
+--   :PackerSync    -> installs all plugins
+--   Then reopen Neovim
+

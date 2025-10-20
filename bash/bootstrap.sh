@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # ~/.bash/bootstrap.sh
-# PKGBUILD-aware environment bootstrap for Arch Linux
+# PKGBUILD-aware environment bootstrap for Arch Linux + Neovim plugin setup
 
 set -euo pipefail
 
-# --- 0. Ensure yay is installed ---
+# -----------------------------
+# 0. Ensure yay (AUR helper) installed
+# -----------------------------
 ensure_yay() {
     if ! command -v yay &>/dev/null; then
         echo "📦 Installing yay (AUR helper)..."
@@ -17,7 +19,9 @@ ensure_yay() {
     fi
 }
 
-# --- 1. Install repo / AUR packages ---
+# -----------------------------
+# 1. Install repo / AUR packages
+# -----------------------------
 install_repo_pkg() {
     local pkg="$1"
     if ! pacman -Qi "$pkg" &>/dev/null; then
@@ -34,7 +38,9 @@ install_aur_pkg() {
     fi
 }
 
-# --- 2. Parse PKGBUILD dependencies ---
+# -----------------------------
+# 2. Parse PKGBUILD dependencies
+# -----------------------------
 parse_pkgbuild_deps() {
     local pkgbuild="$1"
     declare -A deps
@@ -64,14 +70,16 @@ parse_pkgbuild_deps() {
     done
 }
 
-# --- 3. Bootstrap environment ---
+# -----------------------------
+# 3. Bootstrap environment
+# -----------------------------
 bootstrap() {
     echo "🔹 Running PKGBUILD-aware bootstrap..."
     ensure_yay
 
     local folder="${1:-$HOME/Projects/dotfiles/pkgbuilds}"
     if [[ ! -d "$folder" ]]; then
-        echo "ℹ️  Folder '$folder' does not exist — skipping PKGBUILD installs."
+        echo "ℹ  Folder '$folder' does not exist — skipping PKGBUILD installs."
         return 0
     fi
 
@@ -81,10 +89,26 @@ bootstrap() {
         parse_pkgbuild_deps "$pkgbuild"
     done
 
+    # -----------------------------
+    # 3a. Neovim Plugin Setup
+    # -----------------------------
+    if command -v nvim &>/dev/null; then
+        NVIM_PACK_HOME="$HOME/.local/share/nvim/site/pack/packer/start"
+        mkdir -p "$NVIM_PACK_HOME"
+        if [[ ! -d "$NVIM_PACK_HOME/packer.nvim" ]]; then
+            echo "📦 Installing packer.nvim..."
+            git clone --depth 1 https://github.com/wbthomason/packer.nvim "$NVIM_PACK_HOME/packer.nvim"
+        fi
+        echo "🔹 Installing Neovim plugins..."
+        nvim --headless +PackerSync +qa || echo "⚠ Neovim plugin install failed. Run 'nvim' manually to complete."
+    fi
+
     echo "✅ PKGBUILD bootstrap complete!"
 }
 
-# --- 4. Export versioned PKGBUILD snapshot ---
+# -----------------------------
+# 4. Export versioned PKGBUILD snapshot
+# -----------------------------
 timestamp() { date +"%Y-%m-%d_%H-%M-%S"; }
 
 export_pkgbuilds_versioned() {
@@ -116,7 +140,9 @@ EOF
     echo "✅ Versioned PKGBUILD snapshot created."
 }
 
-# --- 5. Git helpers ---
+# -----------------------------
+# 5. Git helpers
+# -----------------------------
 dotfiles_push() {
     local repo_dir="${1:-$HOME/Projects/dotfiles}"
     pushd "$repo_dir" >/dev/null || return
@@ -134,5 +160,51 @@ dotfiles_pull() {
     echo "📥 Pulling latest dotfile updates..."
     git pull --rebase
     popd >/dev/null
+}
+
+# -----------------------------
+# 6. Optional helper: install a specific package list
+# -----------------------------
+install_dependencies() {
+    local packages=("$@")
+    for pkg in "${packages[@]}"; do
+        if pacman -Si "$pkg" &>/dev/null; then
+            install_repo_pkg "$pkg"
+        else
+            install_aur_pkg "$pkg"
+        fi
+    done
+}
+
+# -----------------------------
+# 7. Ensure Packer helper: Ensure packer.nvim is installed for Neovim ---
+# -----------------------------
+# --- Ensure packer.nvim is installed for Neovim ---
+ensure_packer() {
+    local packer_path="$HOME/.local/share/nvim/site/pack/packer/start/packer.nvim"
+    if [ ! -d "$packer_path" ]; then
+        echo "📦 Installing packer.nvim..."
+        git clone --depth 1 https://github.com/wbthomason/packer.nvim "$packer_path"
+    fi
+}
+
+# At the end of bootstrap()
+bootstrap() {
+    echo "🔹 Running PKGBUILD-aware bootstrap..."
+    ensure_yay
+
+    local folder="${1:-$HOME/Projects/dotfiles/pkgbuilds}"
+    [[ ! -d "$folder" ]] && echo "ℹ Folder '$folder' does not exist — skipping PKGBUILD installs." && return
+
+    for pkgbuild in "$folder"/PKGBUILD "$folder"/*/PKGBUILD; do
+        [[ -f "$pkgbuild" ]] || continue
+        parse_pkgbuild_deps "$pkgbuild"
+    done
+
+    # Ensure Neovim plugins are installed
+    ensure_packer
+    nvim --headless +PackerSync +qa
+
+    echo "✅ PKGBUILD bootstrap complete!"
 }
 
