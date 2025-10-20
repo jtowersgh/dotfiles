@@ -1,45 +1,62 @@
-# Dotfiles Setup & Workflow
+# Dotfiles Setup
 
-This repository manages personal dotfiles, scripts, and PKGBUILD-aware package installations for Arch Linux.
+This repository contains my personal dotfiles, including Neovim config, bash modules, and helper scripts.  
 
-## Scripts Overview
+---
 
-### 1. `setup_system.sh`
-- Installs essential system packages (`git`, `yay`, `ethtool`, etc.).
-- Configures Git global identity (`user.name` / `user.email`).
-- Run **once per system** before using the dotfiles repo.
+## Quick Install
 
-### 2. `install.sh`
-- Restores all dotfile symlinks from this repo to the home directory.
-- Creates required directories (`.config`, `bash`, `pkgbuilds`).
-- Sources `.bashrc` for immediate availability of aliases and functions.
-- Run **once on a fresh system** or after restoring a backup.
+Run the all-in-one installer:
 
-### 3. `restore_dotfiles.sh`
-- Safely recreates symlinks for:
-  - `.bashrc`, `.profile`, `.zshrc`
-  - `.config/nvim`, `.config/tmux`, `.config/ranger`
-  - `.local/bin`
-- Backs up existing files if necessary.
-- Can be run **any time** you want to refresh dotfile symlinks.
+```bash
+cd ~/Projects/dotfiles
+./install.sh
 
-### 4. `bootstrap.sh`
-- Installs all packages from PKGBUILD definitions (official repo + AUR).
-- Ensures `yay` is installed for AUR package management.
-- Can export a snapshot of installed packages as versioned PKGBUILD.
-- Run **after `install.sh`** to configure your system environment.
+What it does
 
-### 5. `update_dotfiles.sh` / `dotfiles_push`
-- Commits and pushes changes to the remote repository.
-- Versioned PKGBUILD snapshot is included.
-- Run **after modifying dotfiles or scripts**.
+    Restores dotfiles symlinks
+    Links .bashrc, .bash_profile, Neovim config, and any other managed files.
 
-## Recommended Workflow on a Fresh System
+    Ensures basic directories exist
+    Creates ~/.config, ~/Projects/dotfiles/bash, and ~/Projects/dotfiles/pkgbuilds.
 
-1. Run `setup_system.sh` to install core dependencies and configure Git.  
-2. Run `install.sh` to restore dotfiles and directories.  
-3. Run `bootstrap.sh` to install packages from PKGBUILD definitions.  
-4. Use `dotfiles_push` to commit and push changes back to GitHub (optional).
+    Installs essential system packages
+    Installs git, neovim, and base-devel via pacman.
 
-> **Note:** `restore_dotfiles.sh` can be run independently at any time without affecting installed packages.
+    Sources new .bashrc
+    Ensures aliases and functions (like bootstrap) are available in the current shell.
 
+    Installs packer.nvim if missing
+    Automatically clones Packer into Neovim’s site/pack/packer/start/ directory.
+
+    Installs all Neovim plugins
+    Runs :PackerInstall headless to populate plugins before Lua configs run.
+
+    Bootstraps PKGBUILD dependencies
+    Installs AUR and repo packages defined in pkgbuilds/.
+
+    Updates plugins
+    Runs :PackerSync headless to ensure plugins are up-to-date.
+
+After Installation
+
+    If bootstrap isn’t recognized, run:
+
+exec bash
+bootstrap
+
+    Open Neovim:
+
+nvim
+
+All plugins, including LSP and color schemes, should now load correctly.
+Notes
+
+    First-time Neovim runs:
+    The first nvim --headless +PackerInstall +qa ensures all plugins exist so your init.lua can require() them without errors.
+
+    Git name/email constants:
+    You can configure your Git user details inside bootstrap.sh if you want dotfiles_push to commit automatically.
+
+    Troubleshooting:
+    If any plugin fails to load, open Neovim manually and run :PackerInstall or :PackerSync to debug.
