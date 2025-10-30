@@ -208,3 +208,11 @@ bootstrap() {
     echo "✅ PKGBUILD bootstrap complete!"
 }
 
+# ------------------------------
+# 8. Check if ssh-key exists and run ssh setup if not
+# ------------------------------
+
+if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+    ./setup_ssh_auto.sh
+fi
+

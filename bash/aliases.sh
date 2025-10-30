@@ -17,3 +17,16 @@ alias l="ls -a"
 alias ll="ls -l"
 alias la="ls -la"
 
+# --- ComfyUI launch (hybrid container setup) ---
+alias comfyui="systemd-inhibit --what=handle-lid-switch:sleep --why='ComfyUI running' docker run -it --rm \
+--name comfyui \
+--device /dev/kfd --device /dev/dri --group-add video \
+-p 8188:8188 \
+-v ~/ComfyUI/models:/workspace/ComfyUI/models \
+-v ~/ComfyUI/output:/workspace/ComfyUI/output \
+-v ~/ComfyUI/custom_nodes:/workspace/ComfyUI/custom_nodes \
+corundex/comfyui-rocm:latest"
+
+# Gracefully stop ComfyUI container
+alias comfyui-stop="echo 'Stopping ComfyUI...' && docker stop comfyui 2>/dev/null || echo 'No container running.'"
+

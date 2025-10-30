@@ -12,7 +12,7 @@ done
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
 # Source bootstrap functions (manual execution)
-[ -f ~/Projects/dotfiles/bash/bootstrap.sh ] && source ~/Projects/dotfiles/bash/bootstrap.sh
+#[ -f ~/Projects/dotfiles/bash/bootstrap.sh ] && source ~/Projects/dotfiles/bash/bootstrap.sh
 
 # Define manual bootstrap alias
 alias bootstrap='bootstrap'
