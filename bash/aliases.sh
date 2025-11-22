@@ -8,6 +8,8 @@ alias grep='grep --color=auto'
 alias playlist="vim ~/Documents/playlist"
 alias bottles="flatpak run com.usebottles.bottles"
 alias bashrc="vim ~/.bashrc"
+alias deepseek="deepseek_shell.py"
+alias sddm="sudo systemctl restart sddm"
 
 # Vim / Neovim
 alias vim="nvim"
@@ -25,6 +27,7 @@ alias comfyui="systemd-inhibit --what=handle-lid-switch:sleep --why='ComfyUI run
 -v ~/ComfyUI/models:/workspace/ComfyUI/models \
 -v ~/ComfyUI/output:/workspace/ComfyUI/output \
 -v ~/ComfyUI/custom_nodes:/workspace/ComfyUI/custom_nodes \
+-v ~/ComfyUI/user:/workspace/ComfyUI/user \
 corundex/comfyui-rocm:latest"
 
 # Gracefully stop ComfyUI container
