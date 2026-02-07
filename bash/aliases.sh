@@ -33,3 +33,8 @@ corundex/comfyui-rocm:latest"
 # Gracefully stop ComfyUI container
 alias comfyui-stop="echo 'Stopping ComfyUI...' && docker stop comfyui 2>/dev/null || echo 'No container running.'"
 
+# Recover Sunshine
+alias recsun="~/.local/bin/recover_sunshine.sh"
+
+# unmount vault
+alias lock="fusermount3 -u -z ~/.vault"

@@ -1,0 +1,49 @@
+#!/bin/sh
+set -e
+
+ENC="$HOME/.vault.encrypted"
+MNT="$HOME/.vault"
+
+# --- Prevent double mount / ghost mount ---
+if mountpoint -q "$MNT"; then
+    echo "Vault already mounted at $MNT"
+    echo "If this is stale, run:"
+    echo "  fusermount3 -u -z $MNT"
+    exit 1
+fi
+
+# --- Ensure clean mountpoint ---
+mkdir -p "$MNT"
+rm -rf "$MNT"/*
+
+echo "Mounting vault..."
+gocryptfs "$ENC" "$MNT"
+
+echo "Vault mounted at $MNT"
+echo "Press Ctrl+D or type 'exit' to unmount."
+
+# --- Interactive subshell inside vault ---
+(
+  cd "$MNT"
+  "$SHELL"
+)
+
+# --- Pre-unmount safety checks ---
+BUSY_FILES=$(lsof +D "$MNT" 2>/dev/null || true)
+if [ -n "$BUSY_FILES" ]; then
+    echo "Cannot unmount: files still open:"
+    echo "$BUSY_FILES"
+    exit 1
+fi
+
+BUSY_CWD=$(fuser -m "$MNT" 2>/dev/null || true)
+if [ -n "$BUSY_CWD" ]; then
+    echo "Cannot unmount: processes still inside vault:"
+    ps -fp $BUSY_CWD
+    exit 1
+fi
+
+echo "Unmounting vault..."
+fusermount3 -u -z "$MNT"
+echo "Vault closed."
+
