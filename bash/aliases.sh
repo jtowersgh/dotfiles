@@ -10,6 +10,8 @@ alias bottles="flatpak run com.usebottles.bottles"
 alias bashrc="vim ~/.bashrc"
 alias deepseek="deepseek_shell.py"
 alias sddm="sudo systemctl restart sddm"
+alias qwen="qwen.py"
+alias pixview="scrcpy-obs.sh"
 
 # Vim / Neovim
 alias vim="nvim"
@@ -37,4 +39,4 @@ alias comfyui-stop="echo 'Stopping ComfyUI...' && docker stop comfyui 2>/dev/nul
 alias recsun="~/.local/bin/recover_sunshine.sh"
 
 # unmount vault
-alias lock="fusermount3 -u -z ~/.vault"
+alias lock="cd ~ && fusermount3 -u -z ~/.vault"
