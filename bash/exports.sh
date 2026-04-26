@@ -13,3 +13,6 @@ fi
 
 # Force use of 7900xtx graphics card for LLM
 export HIP_VISIBLE_DEVICES=GPU-4e53244067186199
+
+# Virtual Machine export
+export LIBVIRT_DEFAULT_URI=qemu:///system

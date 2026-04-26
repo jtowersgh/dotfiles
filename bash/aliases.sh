@@ -12,6 +12,16 @@ alias deepseek="deepseek_shell.py"
 alias sddm="sudo systemctl restart sddm"
 alias qwen="qwen.py"
 alias pixview="scrcpy-obs.sh"
+alias sun="pkill sunshine ; sunshine &"
+alias fox="systemd-run --user --scope \
+  -p MemoryMax=10G \
+  -p MemoryHigh=8G \
+  -p ManagedOOMMemoryPressure=kill \
+  firefox"
+alias electrum="~/Applications/electrum-4.7.1-x86_64.AppImage"
+alias getbalance="~/Applications/electrum-4.7.1-x86_64.AppImage daemon -d \
+	~/Applications/electrum-4.7.1-x86_64.AppImage getbalance \
+	~/Applications/electrum-4.7.1-x86_64.AppImage daemon stop"
 
 # Vim / Neovim
 alias vim="nvim"
