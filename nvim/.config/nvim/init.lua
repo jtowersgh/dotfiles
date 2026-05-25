@@ -1,91 +1,99 @@
--- init.lua (merged first-run-safe version)
+require("config.lazy")
 
--- ---------------------------------------------------
--- 0. Bootstrap packer.nvim if not installed
--- ---------------------------------------------------
-local fn = vim.fn
-local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
+vim.opt.termguicolors = true
+vim.opt.clipboard = "unnamedplus"
 
-if fn.empty(fn.glob(install_path)) > 0 then
-  print("📦 Installing packer.nvim...")
-  fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
-  vim.cmd [[packadd packer.nvim]]
-end
-
--- Auto-compile when saving this file
-vim.cmd([[
-  augroup packer_user_config
-    autocmd!
-    autocmd BufWritePost init.lua source <afile> | PackerCompile
-  augroup end
-]])
-
--- ---------------------------------------------------
--- 1. Plugins
--- ---------------------------------------------------
-require('packer').startup(function(use)
-  use 'wbthomason/packer.nvim'          -- Packer manages itself
-  use 'neovim/nvim-lspconfig'           -- LSP configurations
-  use 'hrsh7th/nvim-cmp'                -- Autocompletion
-  use 'hrsh7th/cmp-nvim-lsp'
-  use 'nvim-treesitter/nvim-treesitter' -- Treesitter syntax highlighting
-  use 'nvim-lua/plenary.nvim'
-  use 'nvim-telescope/telescope.nvim'
-  use 'ThePrimeagen/harpoon'
-  use 'rose-pine/neovim'                -- Colorscheme
-end)
-
--- ---------------------------------------------------
--- 2. Load your existing bartleby module
--- ---------------------------------------------------
-require("bartleby")
-print("hello")  -- your debug / test line
-
--- ---------------------------------------------------
--- 3. Neovim settings
--- ---------------------------------------------------
-vim.opt.signcolumn = 'yes'  -- avoid layout shift
-
--- ---------------------------------------------------
--- 4. LSP capabilities
--- ---------------------------------------------------
-local lspconfig_defaults = require('lspconfig').util.default_config
-lspconfig_defaults.capabilities = vim.tbl_deep_extend(
-  'force',
-  lspconfig_defaults.capabilities,
-  require('cmp_nvim_lsp').default_capabilities()
-)
-
--- ---------------------------------------------------
--- 5. LSP keymaps
--- ---------------------------------------------------
-vim.api.nvim_create_autocmd('LspAttach', {
-  desc = 'LSP actions',
-  callback = function(event)
-    local opts = {buffer = event.buf}
-
-    vim.keymap.set('n', 'K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
-    vim.keymap.set('n', 'gd', '<cmd>lua vim.lsp.buf.definition()<cr>', opts)
-    vim.keymap.set('n', 'gD', '<cmd>lua vim.lsp.buf.declaration()<cr>', opts)
-    vim.keymap.set('n', 'gi', '<cmd>lua vim.lsp.buf.implementation()<cr>', opts)
-    vim.keymap.set('n', 'go', '<cmd>lua vim.lsp.buf.type_definition()<cr>', opts)
-    vim.keymap.set('n', 'gr', '<cmd>lua vim.lsp.buf.references()<cr>', opts)
-    vim.keymap.set('n', 'gs', '<cmd>lua vim.lsp.buf.signature_help()<cr>', opts)
-    vim.keymap.set('n', '<F2>', '<cmd>lua vim.lsp.buf.rename()<cr>', opts)
-    vim.keymap.set({'n', 'x'}, '<F3>', '<cmd>lua vim.lsp.buf.format({async = true})<cr>', opts)
-    vim.keymap.set('n', '<F4>', '<cmd>lua vim.lsp.buf.code_action()<cr>', opts)
-  end,
+--help files open in full window and are listed in buffer elements
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "help",
+	callback = function()
+		vim.cmd("only")
+		vim.bo.buflisted = true
+	end,
 })
 
--- ---------------------------------------------------
--- 6. Colorscheme
--- ---------------------------------------------------
-vim.cmd [[colorscheme rose-pine]]
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
 
--- ---------------------------------------------------
--- 7. Safe first-run notes
--- ---------------------------------------------------
--- After first run:
---   :PackerSync    -> installs all plugins
---   Then reopen Neovim
+vim.o.tabstop = 4
+vim.o.softtabstop = 4
+vim.o.shiftwidth = 4
+vim.o.expandtab = true
+vim.o.autoindent = true
+vim.o.smartindent = true
+vim.o.signcolumn = "yes"
+vim.o.foldenable = false
+vim.wo.relativenumber = true
 
+--KEYMAPS
+vim.keymap.set("n", "<Tab>", function()
+	require("oil").open()
+end)
+
+vim.keymap.set("n", "<A-j>", ":m .+1<CR>==", { silent = true })
+vim.keymap.set("n", "<A-k>", ":m .-2<CR>==", { silent = true })
+vim.keymap.set("v", "<A-j>", ":m '>+1<CR>gv=gv", { silent = true })
+vim.keymap.set("v", "<A-k>", ":m '<-2<CR>gv=gv", { silent = true })
+
+--unhighlight
+vim.keymap.set("n", "<leader>h", ":noh<CR>", { silent = true })
+
+--terminal
+vim.keymap.set("t", "<S-Esc>", [[<C-\><C-n>]])
+
+--saving&quitting
+vim.keymap.set("n", "<C-s>", ":w<CR>")
+vim.keymap.set("n", "<F5>", ":wa<CR>")
+vim.keymap.set("n", "<BS>", ":confirm bdelete<CR>")
+vim.keymap.set("n", "<C-BS>", ":qa<CR>")
+
+--copilot
+--this is necessary to still allow default tab behavior when copilot suggestion is not visible
+vim.keymap.set("i", "<Tab>", function()
+	local copilot = require("copilot.suggestion")
+	if copilot.is_visible() then
+		copilot.accept_line()
+	else
+		return "\t"
+	end
+end, { expr = true })
+
+--telescope
+local builtin = require("telescope.builtin")
+vim.keymap.set("n", "<leader>f", builtin.find_files, {})
+vim.keymap.set("n", "<leader>g", builtin.live_grep, {})
+vim.keymap.set("n", "<leader>b", builtin.buffers, {})
+
+--harpoon
+local harpoon = require("harpoon")
+harpoon:setup()
+
+vim.keymap.set("n", "<leader>a", function()
+	harpoon:list():add()
+end)
+vim.keymap.set("n", "<leader>e", function()
+	harpoon.ui:toggle_quick_menu(harpoon:list())
+end)
+
+vim.keymap.set("n", "<C-h>", function()
+	harpoon:list():select(1)
+end)
+vim.keymap.set("n", "<C-j>", function()
+	harpoon:list():select(2)
+end)
+vim.keymap.set("n", "<C-k>", function()
+	harpoon:list():select(3)
+end)
+vim.keymap.set("n", "<C-l>", function()
+	harpoon:list():select(4)
+end)
+
+vim.keymap.set("n", "<C-,>", function()
+	harpoon:list():prev()
+end)
+vim.keymap.set("n", "<C-.>", function()
+	harpoon:list():next()
+end)
+
+local treesitter = require("treesitter.treesitter_setup")
+treesitter.setup()

@@ -35,6 +35,7 @@ alias la="ls -la"
 alias comfyui="systemd-inhibit --what=handle-lid-switch:sleep --why='ComfyUI running' docker run -it --rm \
 --name comfyui \
 --device /dev/kfd --device /dev/dri --group-add video \
+-e PATH=/opt/conda/envs/py_3.12/bin:\$PATH \
 -p 8188:8188 \
 -v ~/ComfyUI/models:/workspace/ComfyUI/models \
 -v ~/ComfyUI/output:/workspace/ComfyUI/output \
