@@ -24,7 +24,10 @@ alias getbalance="~/Applications/electrum-4.7.1-x86_64.AppImage daemon -d \
 	~/Applications/electrum-4.7.1-x86_64.AppImage daemon stop"
 
 # Vim / Neovim
-alias vim="nvim"
+alias vl='NVIM_APPNAME=nvim-luke nvim'
+
+# Original stable config
+alias vo='NVIM_APPNAME=nvim-original nvim'
 
 # Directory listing shortcuts
 alias l="ls -a"
