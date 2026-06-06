@@ -22,6 +22,7 @@ alias electrum="~/Applications/electrum-4.7.1-x86_64.AppImage"
 alias getbalance="~/Applications/electrum-4.7.1-x86_64.AppImage daemon -d \
 	~/Applications/electrum-4.7.1-x86_64.AppImage getbalance \
 	~/Applications/electrum-4.7.1-x86_64.AppImage daemon stop"
+alias mcserver="/usr/lib/jvm/java-21-openjdk/bin/java -Xms2G -Xmx4G -jar installer/fabric-server-mc.1.21.11-loader.0.19.2-launcher.1.1.1.jar nogui"
 
 # Vim / Neovim
 alias vl='NVIM_APPNAME=nvim-luke nvim'
