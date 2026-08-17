@@ -1,0 +1,144 @@
+#!/bin/bash
+
+set -euo pipefail
+
+LEFT_MONITOR="DP-3"
+RIGHT_MONITOR="HDMI-A-1"
+CONTEXT_COUNT=10
+RIGHT_OFFSET=10
+
+usage() {
+    echo "Usage:"
+    echo "  hypr-context switch N"
+    echo "  hypr-context move N"
+    echo "  hypr-context next"
+    echo "  hypr-context prev"
+    exit 1
+}
+
+active_monitor() {
+    hyprctl activeworkspace |
+        sed -n 's/.* on monitor \([^:]*\):.*/\1/p'
+}
+
+context_to_left_workspace() {
+    local context="$1"
+    if (( context < 1 || context > CONTEXT_COUNT )); then
+        echo "Invalid context: $context" >&2
+        exit 1
+    fi
+    echo "$context"
+}
+
+context_to_right_workspace() {
+    local context="$1"
+    if (( context < 1 || context > CONTEXT_COUNT )); then
+        echo "Invalid context: $context" >&2
+        exit 1
+    fi
+    echo $((context + RIGHT_OFFSET))
+}
+
+switch_context() {
+    local context="$1"
+    local original_monitor
+    local left_workspace
+    local right_workspace
+
+    original_monitor="$(active_monitor)"
+    left_workspace="$(context_to_left_workspace "$context")"
+    right_workspace="$(context_to_right_workspace "$context")"
+
+    hyprctl dispatch focusmonitor "$LEFT_MONITOR" >/dev/null
+    hyprctl dispatch workspace "$left_workspace" >/dev/null
+
+    hyprctl dispatch focusmonitor "$RIGHT_MONITOR" >/dev/null
+    hyprctl dispatch workspace "$right_workspace" >/dev/null
+
+    hyprctl dispatch focusmonitor "$original_monitor" >/dev/null
+}
+
+move_context() {
+    local context="$1"
+    local monitor
+    local target_workspace
+
+    monitor="$(active_monitor)"
+
+    case "$monitor" in
+        "$LEFT_MONITOR")
+            target_workspace="$(context_to_left_workspace "$context")"
+            ;;
+        "$RIGHT_MONITOR")
+            target_workspace="$(context_to_right_workspace "$context")"
+            ;;
+        *)
+            echo "Unknown active monitor: $monitor" >&2
+            exit 1
+            ;;
+    esac
+
+    hyprctl dispatch movetoworkspace "$target_workspace" >/dev/null
+}
+
+current_context() {
+    local workspace_id
+    local monitor
+
+    monitor="$(active_monitor)"
+    workspace_id="$(hyprctl activeworkspace |
+        sed -n 's/^workspace ID \([0-9]*\).*/\1/p')"
+
+    case "$monitor" in
+        "$LEFT_MONITOR")
+            echo "$workspace_id"
+            ;;
+        "$RIGHT_MONITOR")
+            echo $((workspace_id - RIGHT_OFFSET))
+            ;;
+        *)
+            echo "Unknown active monitor: $monitor" >&2
+            exit 1
+            ;;
+    esac
+}
+
+cycle_context() {
+    local direction="$1"
+    local current
+    local next
+
+    current="$(current_context)"
+
+    if [[ "$direction" == "next" ]]; then
+        next=$((current + 1))
+        (( next > CONTEXT_COUNT )) && next=1
+    else
+        next=$((current - 1))
+        (( next < 1 )) && next=CONTEXT_COUNT
+    fi
+
+    switch_context "$next"
+}
+
+case "${1:-}" in
+    switch)
+        [[ $# -eq 2 ]] || usage
+        switch_context "$2"
+        ;;
+    move)
+        [[ $# -eq 2 ]] || usage
+        move_context "$2"
+        ;;
+    next)
+        [[ $# -eq 1 ]] || usage
+        cycle_context next
+        ;;
+    prev)
+        [[ $# -eq 1 ]] || usage
+        cycle_context prev
+        ;;
+    *)
+        usage
+        ;;
+esac
