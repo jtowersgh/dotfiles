@@ -28,3 +28,8 @@ comfy-gen () {
 
 }
 
+writefile() {
+	local file="$1"
+	echo "Paste text. Press Ctrl-D when finished."
+	cat > "$file"
+}

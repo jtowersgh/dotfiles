@@ -16,3 +16,9 @@ export HIP_VISIBLE_DEVICES=GPU-4e53244067186199
 
 # Virtual Machine export
 export LIBVIRT_DEFAULT_URI=qemu:///system
+
+# Comfyui venv for native install - with piping to Ollama
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+
+eval "$(pyenv init - bash)"
