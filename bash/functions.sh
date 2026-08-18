@@ -33,3 +33,8 @@ writefile() {
 	echo "Paste text. Press Ctrl-D when finished."
 	cat > "$file"
 }
+
+# Clear the screen and terminal scrollback.
+clear() {
+    printf '\e[2J\e[H\e[3J'
+}
