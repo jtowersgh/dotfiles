@@ -38,3 +38,34 @@ writefile() {
 clear() {
     printf '\e[2J\e[H\e[3J'
 }
+
+# Execute a multiline command block in a child Bash and capture all output.
+capture_last() {
+    local tmp="/tmp/last-command-block.txt"
+    local script
+    local status
+
+    script=$(cat) || return 1
+    : > "$tmp"
+
+    bash -c "$script" < /dev/tty 2>&1 | tee "$tmp"
+    status=${PIPESTATUS[0]}
+
+    printf '\n===== COMMAND BLOCK COMPLETE =====\n'
+    printf 'Output saved to: %s\n' "$tmp"
+    printf 'Exit status: %s\n' "$status"
+
+    return "$status"
+}
+
+# View the most recently captured command-block output.
+show_last_output() {
+    local tmp="/tmp/last-command-block.txt"
+
+    if [ ! -f "$tmp" ]; then
+        printf 'No captured command-block output exists.\n'
+        return 1
+    fi
+
+    less "$tmp"
+}
