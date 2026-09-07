@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+import sys
+from pathlib import Path
+
+
+def read_block(prompt):
+    print(prompt, file=sys.stderr)
+    print("(Press Ctrl-D when finished)", file=sys.stderr)
+    return sys.stdin.read()
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} FILE", file=sys.stderr)
+        sys.exit(2)
+
+    path = Path(sys.argv[1])
+
+    if not path.is_file():
+        print(f"ERROR: File not found: {path}", file=sys.stderr)
+        sys.exit(1)
+
+    text = path.read_text()
+
+    old = read_block("\nPaste OLD text:")
+    new = read_block("\nPaste NEW text:")
+
+    count = text.count(old)
+
+    if count == 0:
+        print("ERROR: Expected text was not found; file was not changed.")
+        sys.exit(1)
+
+    if count > 1:
+        print(
+            f"ERROR: Found {count} occurrences; file was not changed."
+        )
+        print("This helper requires exactly one match.")
+        sys.exit(1)
+
+    updated = text.replace(old, new, 1)
+    path.write_text(updated)
+
+    print(f"Found exactly 1 occurrence.")
+    print(f"Updated {path}")
+
+
+if __name__ == "__main__":
+    main()
