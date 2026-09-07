@@ -26,25 +26,31 @@ def main():
 
     text = path.read_text()
 
-    old = read_block("Paste OLD text:")
-    new = read_block("Paste NEW text:")
+    marker = read_block("Paste INSERTION MARKER:")
+    new = read_block("Paste TEXT TO INSERT:")
 
-    count = text.count(old)
+    marker_count = text.count(marker)
 
-    if count == 0:
-        print(f"ERROR: Expected text was not found.")
+    if marker_count == 0:
+        print("ERROR: Insertion marker was not found.")
         print(f"File was not changed: {path}")
         sys.exit(1)
 
-    if count > 1:
-        print(f"ERROR: Found {count} occurrences of the old text.")
+    if marker_count > 1:
+        print(f"ERROR: Found {marker_count} occurrences of the insertion marker.")
         print(f"File was not changed: {path}")
         sys.exit(1)
 
-    path.write_text(text.replace(old, new, 1))
+    if new in text:
+        print("ERROR: The text to insert already exists in the file.")
+        print(f"File was not changed: {path}")
+        sys.exit(1)
+
+    updated = text.replace(marker, new + marker, 1)
+    path.write_text(updated)
 
     print()
-    print("SUCCESS: Replaced exactly 1 occurrence.")
+    print("SUCCESS: Inserted text before the marker.")
     print(f"Updated: {path}")
 
 
