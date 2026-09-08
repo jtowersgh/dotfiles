@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+
+import json
+import sys
+from pathlib import Path
+
+
+def fail(message):
+    print(f"ERROR: {message}")
+    sys.exit(1)
+
+
+def load_operations():
+    try:
+        data = sys.stdin.read()
+    except KeyboardInterrupt:
+        print()
+        fail("Input cancelled.")
+
+    if not data.strip():
+        fail("No edit operations were provided on stdin.")
+
+    try:
+        operations = json.loads(data)
+    except json.JSONDecodeError as exc:
+        fail(
+            f"Invalid JSON at line {exc.lineno}, "
+            f"column {exc.colno}: {exc.msg}"
+        )
+
+    if not isinstance(operations, list):
+        fail("The top-level value must be a JSON list.")
+
+    if not operations:
+        fail("The edit list is empty.")
+
+    return operations
+
+
+def validate_operation(operation, index):
+    if not isinstance(operation, dict):
+        fail(
+            f"Edit #{index} must be an object."
+        )
+
+    op = operation.get("op")
+
+    if op not in {"replace", "insert"}:
+        fail(
+            f"Edit #{index}: unsupported operation "
+            f"{op!r}; expected 'replace' or 'insert'."
+        )
+
+    if op == "replace":
+        if "old" not in operation:
+            fail(f"Edit #{index}: missing 'old'.")
+        if "new" not in operation:
+            fail(f"Edit #{index}: missing 'new'.")
+
+        if not isinstance(operation["old"], str):
+            fail(f"Edit #{index}: 'old' must be a string.")
+        if not isinstance(operation["new"], str):
+            fail(f"Edit #{index}: 'new' must be a string.")
+
+        if operation["old"] == "":
+            fail(f"Edit #{index}: 'old' cannot be empty.")
+
+    elif op == "insert":
+        if "marker" not in operation:
+            fail(f"Edit #{index}: missing 'marker'.")
+        if "text" not in operation:
+            fail(f"Edit #{index}: missing 'text'.")
+
+        if not isinstance(operation["marker"], str):
+            fail(f"Edit #{index}: 'marker' must be a string.")
+        if not isinstance(operation["text"], str):
+            fail(f"Edit #{index}: 'text' must be a string.")
+
+        if operation["marker"] == "":
+            fail(f"Edit #{index}: 'marker' cannot be empty.")
+
+
+def describe(operation):
+    op = operation["op"]
+
+    if op == "replace":
+        old = operation["old"]
+        new = operation["new"]
+
+        return (
+            f"REPLACE {len(old)} chars -> {len(new)} chars"
+        )
+
+    marker = operation["marker"]
+    text = operation["text"]
+
+    return (
+        f"INSERT {len(text)} chars before "
+        f"{len(marker)}-char marker"
+    )
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} FILE")
+        sys.exit(2)
+
+    path = Path(sys.argv[1])
+
+    if not path.is_file():
+        fail(f"File not found: {path}")
+
+    try:
+        text = path.read_text()
+    except OSError as exc:
+        fail(f"Could not read {path}: {exc}")
+
+    operations = load_operations()
+
+    print("=== EDIT TEXT ===")
+    print(f"File: {path}")
+    print(f"Operations: {len(operations)}")
+    print()
+
+    # ------------------------------------------------------------
+    # Validate the structure of every operation first.
+    # ------------------------------------------------------------
+
+    for index, operation in enumerate(operations, start=1):
+        validate_operation(operation, index)
+
+    # ------------------------------------------------------------
+    # Reject duplicate replacement targets / insertion markers.
+    # ------------------------------------------------------------
+
+    seen_targets = {}
+
+    for index, operation in enumerate(operations, start=1):
+        if operation["op"] == "replace":
+            target = operation["old"]
+            target_type = "replacement target"
+        else:
+            target = operation["marker"]
+            target_type = "insertion marker"
+
+        key = (operation["op"], target)
+
+        if key in seen_targets:
+            previous = seen_targets[key]
+            fail(
+                f"Edit #{index} duplicates the {target_type} "
+                f"from edit #{previous}. "
+                "File was not changed."
+            )
+
+        seen_targets[key] = index
+    # ------------------------------------------------------------
+    # Validate every operation against the ORIGINAL file.
+    #
+    # Nothing is written during validation.
+    # ------------------------------------------------------------
+
+    for index, operation in enumerate(operations, start=1):
+        op = operation["op"]
+
+        if op == "replace":
+            old = operation["old"]
+            count = text.count(old)
+
+            if count != 1:
+                print(
+                    f"[{index}/{len(operations)}] "
+                    f"{describe(operation)} ... FAILED"
+                )
+
+                if count == 0:
+                    fail(
+                        "Expected text was not found. "
+                        f"Found 0 occurrences."
+                    )
+
+                fail(
+                    "Expected exactly 1 occurrence, "
+                    f"found {count}. "
+                    "File was not changed."
+                )
+
+        elif op == "insert":
+            marker = operation["marker"]
+            new = operation["text"]
+
+            marker_count = text.count(marker)
+
+            if marker_count != 1:
+                print(
+                    f"[{index}/{len(operations)}] "
+                    f"{describe(operation)} ... FAILED"
+                )
+
+                if marker_count == 0:
+                    fail(
+                        "Insertion marker was not found. "
+                        "File was not changed."
+                    )
+
+                fail(
+                    "Expected exactly 1 occurrence of the "
+                    f"insertion marker, found {marker_count}. "
+                    "File was not changed."
+                )
+
+            if new in text:
+                print(
+                    f"[{index}/{len(operations)}] "
+                    f"{describe(operation)} ... FAILED"
+                )
+                fail(
+                    "Text to insert already exists in the file. "
+                    "File was not changed."
+                )
+
+    # ------------------------------------------------------------
+    # All operations passed validation.
+    #
+    # Apply them in order to an in-memory copy.
+    # ------------------------------------------------------------
+
+    updated = text
+
+    for index, operation in enumerate(operations, start=1):
+        op = operation["op"]
+
+        if op == "replace":
+            old = operation["old"]
+            new = operation["new"]
+
+            updated = updated.replace(old, new, 1)
+
+        elif op == "insert":
+            marker = operation["marker"]
+            new = operation["text"]
+
+            updated = updated.replace(
+                marker,
+                new + marker,
+                1,
+            )
+
+        print(
+            f"[{index}/{len(operations)}] "
+            f"{describe(operation)} ... OK"
+        )
+
+    # ------------------------------------------------------------
+    # Write only after every operation succeeded.
+    # ------------------------------------------------------------
+
+    try:
+        path.write_text(updated)
+    except OSError as exc:
+        fail(
+            f"Could not write {path}: {exc}"
+        )
+
+    print()
+    print(
+        f"SUCCESS: Applied {len(operations)} edits atomically."
+    )
+    print(f"Updated: {path}")
+
+
+if __name__ == "__main__":
+    main()
