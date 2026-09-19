@@ -81,6 +81,30 @@ move_context() {
     hyprctl dispatch movetoworkspace "$target_workspace" >/dev/null
 }
 
+move_to_other_monitor() {
+    local context
+    local monitor
+    local target_workspace
+
+    context="$(current_context)"
+    monitor="$(active_monitor)"
+
+    case "$monitor" in
+        "$LEFT_MONITOR")
+            target_workspace="$(context_to_right_workspace "$context")"
+            ;;
+        "$RIGHT_MONITOR")
+            target_workspace="$(context_to_left_workspace "$context")"
+            ;;
+        *)
+            echo "Unknown active monitor: $monitor" >&2
+            exit 1
+            ;;
+    esac
+
+    hyprctl dispatch movetoworkspacesilent "$target_workspace" >/dev/null
+}
+
 current_context() {
     local workspace_id
     local monitor
@@ -129,6 +153,10 @@ case "${1:-}" in
     move)
         [[ $# -eq 2 ]] || usage
         move_context "$2"
+        ;;
+    other)
+        [[ $# -eq 1 ]] || usage
+        move_to_other_monitor
         ;;
     next)
         [[ $# -eq 1 ]] || usage
