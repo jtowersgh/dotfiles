@@ -11,6 +11,8 @@ usage() {
     echo "Usage:"
     echo "  hypr-context switch N"
     echo "  hypr-context move N"
+    echo "  hypr-context other"
+    echo "  hypr-context rotate"
     echo "  hypr-context next"
     echo "  hypr-context prev"
     exit 1
@@ -105,6 +107,44 @@ move_to_other_monitor() {
     hyprctl dispatch movetoworkspacesilent "$target_workspace" >/dev/null
 }
 
+rotate_monitor() {
+    local transform
+
+    transform="$(hyprctl monitors -j | python -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+
+for monitor in data:
+    if monitor["name"] == "HDMI-A-1":
+        print(monitor["transform"])
+        break
+else:
+    raise SystemExit("HDMI-A-1 not found")
+')"
+
+    case "$transform" in
+        0)
+            # Portrait: ASUS becomes 1080x1920.
+            # Samsung stays at (0,0).
+            # ASUS is positioned at (1920,-840) so its bottom-left
+            # corner aligns with Samsung's bottom-right at (1920,1080).
+            hyprctl keyword monitor "DP-3,preferred,0x0,1,transform,0" >/dev/null
+            hyprctl keyword monitor "HDMI-A-1,preferred,1920x-840,1,transform,1" >/dev/null
+            ;;
+        1)
+            # Landscape: restore the normal side-by-side position.
+            hyprctl keyword monitor "DP-3,preferred,0x0,1,transform,0" >/dev/null
+            hyprctl keyword monitor "HDMI-A-1,preferred,1920x0,1,transform,0" >/dev/null
+            ;;
+        *)
+            echo "HDMI-A-1 has unsupported transform: $transform" >&2
+            exit 1
+            ;;
+    esac
+}
+
 current_context() {
     local workspace_id
     local monitor
@@ -157,6 +197,10 @@ case "${1:-}" in
     other)
         [[ $# -eq 1 ]] || usage
         move_to_other_monitor
+        ;;
+    rotate)
+        [[ $# -eq 1 ]] || usage
+        rotate_monitor
         ;;
     next)
         [[ $# -eq 1 ]] || usage
